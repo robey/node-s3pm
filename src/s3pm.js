@@ -18,7 +18,7 @@ command must be one of:
 
     publish
         run "npm pack" and publish the result to S3
-    link <name>
+    link [--dev] <name>
         "npm install --save" the S3 URL for a package
 `;
 
@@ -49,13 +49,18 @@ function main() {
   if (command == "publish") {
     publish.publish(cli, client);
   } else if (command == "link") {
+    let devMode = false;
     let name = argv[1];
+    if (name == "--dev") {
+      devMode = true;
+      name = argv[2];
+    }
     if (!name) {
       cli.displayError("Package name is required.");
       process.exit(1);
     }
 
-    link.linkLatest(cli, client, name);
+    link.linkLatest(cli, client, name, devMode);
   } else {
     cli.displayError("Unknown command: " + argv.join(" "));
     console.log(USAGE);

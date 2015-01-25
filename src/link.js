@@ -2,7 +2,11 @@ let exec = require("./exec");
 let Promise = require("bluebird");
 let util = require("util");
 
-function linkLatest(cli, client, packageName) {
+// is there a better guess here?
+// better than 15 minutes, but may be a rude surprise when the link stops working in a year.
+let YEAR = 60 * 60 * 24 * 366;
+
+function linkLatest(cli, client, packageName, devMode) {
   listPackages(client, packageName).then((packageNames) => {
     if (packageNames.length == 0) {
       cli.displayError("No packages matching: " + packageName);
@@ -14,11 +18,13 @@ function linkLatest(cli, client, packageName) {
 
     let params = {
       Bucket: process.env.S3PM_BUCKET,
-      Key: latest
+      Key: latest,
+      Expires: YEAR
     };
     let url = client.s3.getSignedUrl("getObject", params);
 
-    exec.exec(cli, "npm", "install", url, "--save").then(() => {
+    let saveOption = devMode ? "--save-dev" : "--save";
+    exec.exec(cli, "npm", "install", url, saveOption).then(() => {
       process.exit(0);
     }).catch((error) => {
       cli.displayError(error);
