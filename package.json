@@ -1,0 +1,30 @@
+{
+  "name": "s3pm",
+  "version": "1.0.14",
+  "description": "publish to (and link from) S3 as a jank package store",
+  "author": "Robey Pointer <robeypointer@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/..."
+  },
+  "scripts": {
+    "clean": "rm -rf lib",
+    "prepublish": "6to5 --source-maps --out-dir lib src"
+  },
+  "dependencies": {
+    "bluebird": "*",
+    "clicolor": "*",
+    "s3": "*"
+  },
+  "devDependencies": {
+    "6to5": "*",
+    "source-map-support": "*"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "bin": {
+    "s3pm": "./bin/s3pm"
+  }
+}
