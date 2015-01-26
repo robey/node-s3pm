@@ -7,6 +7,12 @@
     "type": "git",
     "url": "https://github.com/robey/node-s3pm.git"
   },
+  "licenses": [
+    {
+      "type": "Apache License 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+    }
+  ],
   "scripts": {
     "clean": "rm -rf lib",
     "prepublish": "6to5 --source-maps --out-dir lib src"
