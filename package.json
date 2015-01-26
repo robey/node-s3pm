@@ -5,7 +5,7 @@
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/..."
+    "url": "https://github.com/robey/node-s3pm.git"
   },
   "scripts": {
     "clean": "rm -rf lib",
@@ -14,11 +14,11 @@
   "dependencies": {
     "bluebird": "*",
     "clicolor": "*",
-    "s3": "*"
+    "s3": "*",
+    "source-map-support": "*"
   },
   "devDependencies": {
-    "6to5": "*",
-    "source-map-support": "*"
+    "6to5": "*"
   },
   "files": [
     "bin",
