@@ -1,6 +1,6 @@
 {
   "name": "s3pm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "publish to (and link from) S3 as a jank node module storage",
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "repository": {
