@@ -7,8 +7,8 @@ let COLORS = {
   COMMAND: "d0d"
 };
 
-function publish(cli, client) {
-  exec.exec(cli, "npm", "version", "patch").then(() => {
+function publish(cli, client, bumpVersion) {
+  (bumpVersion ? exec.exec(cli, "npm", "version", "patch") : Promise.resolve()).then(() => {
     return exec.exec(cli, "npm", "pack");
   }).catch((error) => {
     cli.displayError(error.message);

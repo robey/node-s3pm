@@ -16,10 +16,12 @@ usage: s3pm <command>
 
 command must be one of:
 
-    publish
-        run "npm pack" and publish the result to S3
+    publish [--current]
+        run "npm version patch && npm pack", and publish the result to S3
+        (with --current: don't bump the version number)
     link [--dev] <name>
         "npm install --save" the S3 URL for a package
+        (with --dev: use "install --save-dev" instead)
 `;
 
 function main() {
@@ -47,7 +49,8 @@ function main() {
 
   let command = argv[0];
   if (command == "publish") {
-    publish.publish(cli, client);
+    let bumpVersion = (argv[1] != "--current");
+    publish.publish(cli, client, bumpVersion);
   } else if (command == "link") {
     let devMode = false;
     let name = argv[1];
