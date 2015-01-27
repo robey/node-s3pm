@@ -18,6 +18,7 @@
     "prepublish": "6to5 --source-maps --out-dir lib src"
   },
   "dependencies": {
+    "antsy": "*",
     "bluebird": "*",
     "clicolor": "*",
     "s3": "*",
