@@ -7,21 +7,8 @@ let util = require("util");
 let YEAR = 60 * 60 * 24 * 366;
 
 function linkLatest(cli, client, packageName, devMode) {
-  listPackages(client, packageName).then((packageNames) => {
-    if (packageNames.length == 0) {
-      cli.displayError("No packages matching: " + packageName);
-      process.exit(1);
-    }
-    let sortedPackageNames = sortByVersion(packageNames);
-    let latest = sortedPackageNames[sortedPackageNames.length - 1];
-    cli.display(latest);
-
-    let params = {
-      Bucket: process.env.S3PM_BUCKET,
-      Key: latest,
-      Expires: YEAR
-    };
-    let url = client.s3.getSignedUrl("getObject", params);
+  findLatest(cli, client, packageName).then(([ tarball, url ]) => {
+    cli.display(tarball);
 
     let saveOption = devMode ? "--save-dev" : "--save";
     exec.exec(cli, "npm", "install", url, saveOption).then(() => {
@@ -30,6 +17,25 @@ function linkLatest(cli, client, packageName, devMode) {
       cli.displayError(error);
       process.exit(1);
     });
+  });
+}
+
+// return the [ tarballName, url ] of the latest version of this package.
+function findLatest(cli, client, packageName) {
+  return listPackages(client, packageName).then((packageNames) => {
+    if (packageNames.length == 0) {
+      cli.displayError("No packages matching: " + packageName);
+      process.exit(1);
+    }
+    let sortedPackageNames = sortByVersion(packageNames);
+    let latest = sortedPackageNames[sortedPackageNames.length - 1];
+
+    let params = {
+      Bucket: process.env.S3PM_BUCKET,
+      Key: latest,
+      Expires: YEAR
+    };
+    return [ latest, client.s3.getSignedUrl("getObject", params) ];
   });
 }
 
@@ -83,4 +89,6 @@ function sortByVersion(packageNames) {
   return packageNames.sort((a, b) => sortOrder(a) - sortOrder(b));
 }
 
+
+exports.findLatest = findLatest;
 exports.linkLatest = linkLatest;

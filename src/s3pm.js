@@ -22,6 +22,8 @@ command must be one of:
     link [--dev] <name>
         "npm install --save" the S3 URL for a package
         (with --dev: use "install --save-dev" instead)
+    find <name>
+        display the S3 URL for the latest release of a package
 `;
 
 function main() {
@@ -64,6 +66,14 @@ function main() {
     }
 
     link.linkLatest(cli, client, name, devMode);
+  } else if (command == "find") {
+    let name = argv[1];
+    if (!name) {
+      cli.displayError("Package name is required.");
+      process.exit(1);
+    }
+
+    link.findLatest(cli, client, name).then(([ tarballName, url ]) => console.log(url));
   } else {
     cli.displayError("Unknown command: " + argv.join(" "));
     console.log(USAGE);
