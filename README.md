@@ -8,6 +8,12 @@ This module provides an alternate way to publish and "install" packages from an 
 
 ## Usage
 
+You must have the following environment variables set, so s3pm can talk to AWS:
+
+- `AWS_ACCESS_KEY` - the auth key for AWS
+- `AWS_SECRET_KEY` - your secret key for AWS
+- `S3PM_BUCKET` - the name of the S3 bucket to use
+
 There are two commands:
 - `publish` to run `npm version patch && npm pack`, and upload the result to S3
 - `link` to compute a signed URL for a previously published package, and run `npm install --save` to save it into your `package.json`
