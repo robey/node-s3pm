@@ -8,10 +8,13 @@ This module provides an alternate way to publish and "install" packages from an 
 
 ## Usage
 
-You must have the following environment variables set, so s3pm can talk to AWS:
+You must have an AWS access key configured, usually by running `aws configure` in the Amazon AWS toolchain. If you don't like that, you can use these environment variables instead:
 
 - `AWS_ACCESS_KEY` - the auth key for AWS
 - `AWS_SECRET_KEY` - your secret key for AWS
+
+You must also configure an S3 bucket to publish modules to:
+
 - `S3PM_BUCKET` - the name of the S3 bucket to use
 
 There are two commands:

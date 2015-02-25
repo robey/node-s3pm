@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 
-let clicolor = require("clicolor");
-let link = require("./link");
-let Promise = require("bluebird");
-let publish = require("./publish");
-let s3 = require("s3");
-let util = require("util");
+const clicolor = require("clicolor");
+const fs = require("fs");
+const link = require("./link");
+const path = require("path");
+const Promise = require("bluebird");
+const publish = require("./publish");
+const s3 = require("s3");
+const util = require("util");
 
 require("source-map-support").install();
 
@@ -26,28 +28,21 @@ command must be one of:
         display the S3 URL for the latest release of a package
 `;
 
+const cli = clicolor.cli();
+
 function main() {
   let argv = process.argv.slice(2);
   if (argv.length < 1 || argv[0] == "--help") {
     console.log(USAGE);
     process.exit(1);
   }
-  let cli = clicolor.cli();
-  if (! (process.env.AWS_ACCESS_KEY && process.env.AWS_SECRET_KEY)) {
-    cli.displayError("Need both AWS_ACCESS_KEY and AWS_SECRET_KEY environment variables.");
-    process.exit(1);
-  }
+  let credentials = getAwsCredentials();
   if (!process.env.S3PM_BUCKET) {
     cli.displayError("Need S3PM_BUCKET environment variable.");
     process.exit(1);
   }
 
-  let client = s3.createClient({
-    s3Options: {
-      accessKeyId: process.env.AWS_ACCESS_KEY,
-      secretAccessKey: process.env.AWS_SECRET_KEY
-    }
-  });
+  let client = s3.createClient({ s3Options: credentials });
 
   let command = argv[0];
   if (command == "publish") {
@@ -80,5 +75,28 @@ function main() {
     process.exit(1);
   }
 };
+
+function getAwsCredentials() {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  if (fs.existsSync(path.join(home, ".aws_secret_key")) && fs.existsSync(path.join(home, ".aws_access_key"))) {
+    const accessKey = fs.readFileSync(path.join(home, ".aws_access_key")).toString().trim();
+    const secretKey = fs.readFileSync(path.join(home, ".aws_secret_key")).toString().trim();
+    return {
+      accessKeyId: accessKey,
+      secretAccessKey: secretKey
+    };
+  }
+
+  if (process.env.AWS_ACCESS_KEY && process.env.AWS_SECRET_KEY) {
+    return {
+      accessKeyId: process.env.AWS_ACCESS_KEY,
+      secretAccessKey: process.env.AWS_SECRET_KEY
+    };
+  }
+
+  cli.displayError("AWS not configured (run 'aws configure')");
+  process.exit(1);
+}
+
 
 exports.main = main;
