@@ -1,94 +1,90 @@
-let exec = require("./exec");
-let Promise = require("bluebird");
-let util = require("util");
+"use strict";
+
+import exec from "./exec";
+// let Promise = require("bluebird");
 
 // is there a better guess here?
 // better than 15 minutes, but may be a rude surprise when the link stops working in a year.
-let YEAR = 60 * 60 * 24 * 366;
+const YEAR = 60 * 60 * 24 * 366;
 
-function linkLatest(cli, client, packageName, devMode) {
-  findLatest(cli, client, packageName).then(([ tarball, url ]) => {
-    cli.display(tarball);
+export function linkLatest(cli, client, packageName, devMode) {
+  return findLatest(cli, client, packageName).then(({ filename, url }) => {
+    cli.display(filename);
 
-    let saveOption = devMode ? "--save-dev" : "--save";
-    exec.exec(cli, "npm", "install", url, saveOption).then(() => {
+    const saveOption = devMode ? "--save-dev" : "--save";
+    exec(cli, "npm", "install", url, saveOption).then(() => {
       process.exit(0);
-    }).catch((error) => {
+    }).catch(error => {
       cli.displayError(error);
       process.exit(1);
     });
   });
 }
 
-// return the [ tarballName, url ] of the latest version of this package.
-function findLatest(cli, client, packageName) {
-  return listPackages(client, packageName).then((packageNames) => {
+// return the { filename, url } of the latest version of this package.
+export function findLatest(cli, client, packageName) {
+  return listPackages(client, packageName).then(packageNames => {
     if (packageNames.length == 0) {
       cli.displayError("No packages matching: " + packageName);
       process.exit(1);
     }
-    let sortedPackageNames = sortByVersion(packageNames);
-    let latest = sortedPackageNames[sortedPackageNames.length - 1];
+    const sortedPackageNames = sortByVersion(packageNames);
+    const latest = sortedPackageNames[sortedPackageNames.length - 1];
 
-    let params = {
+    const params = {
       Bucket: process.env.S3PM_BUCKET,
       Key: latest,
       Expires: YEAR
     };
-    return [ latest, client.s3.getSignedUrl("getObject", params) ];
+    return { filename: latest, url: client.s3.getSignedUrl("getObject", params) };
   });
 }
 
 // return list of tarballs that match "(packageName)-"
 function listPackages(client, packageName) {
-  let deferred = Promise.defer();
-
-  let s3Params = {
+  const s3Params = {
     Bucket: process.env.S3PM_BUCKET,
     Prefix: packageName + "-"
   };
-  let filenames = [];
-  let matcher = new RegExp(packageName + "-([\\d\\.]+)\\.tgz");
+  const filenames = [];
+  const matcher = new RegExp(packageName + "-([\\d\\.]+)\\.tgz");
 
-  let lister = client.listObjects({ s3Params: s3Params });
-  lister.on("error", (error) => {
-    deferred.reject(error);
+  return new Promise((resolve, reject) => {
+    const lister = client.listObjects({ s3Params: s3Params });
+    lister.on("error", error => {
+      reject(error);
 
-    // console.log("Unable to list objects in " + BUCKET + ": ", error.stack);
-    // process.exit(1);
-  });
-  // progress? do we care?
-  lister.on("data", (result) => {
-    result.Contents.forEach((entry) => {
-      if (entry.Key.match(matcher)) {
-        filenames.push(entry.Key);
-      }
+      // console.log("Unable to list objects in " + BUCKET + ": ", error.stack);
+      // process.exit(1);
     });
-  })
-  lister.on("end", () => {
-    deferred.resolve(filenames);
+    // progress? do we care?
+    lister.on("data", result => {
+      result.Contents.forEach(entry => {
+        if (entry.Key.match(matcher)) {
+          filenames.push(entry.Key);
+        }
+      });
+    });
+    lister.on("end", () => {
+      resolve(filenames);
+    });
   });
-  return deferred.promise;
-};
+}
 
 // given an array of package tarball filenames, sort them in version order.
 // (ignores snapshots and other non-numeric version strings)
 function sortByVersion(packageNames) {
-  let sortOrder = (filename) => {
-    let m = filename.match(/\-([\d\.]+)/);
+  const sortOrder = filename => {
+    const m = filename.match(/\-([\d\.]+)/);
     if (!m) return 0;
     let total = 0;
-    let segments = m[1].split(".").slice(0, 3);
+    const segments = m[1].split(".").slice(0, 3);
     if (segments[segments.length - 1] == "") segments.pop();
     while (segments.length < 3) segments.push("0");
-    for (let i in segments) {
+    for (const i in segments) {
       total = total * 1000 + parseInt(segments[i]);
     }
     return total;
-  }
+  };
   return packageNames.sort((a, b) => sortOrder(a) - sortOrder(b));
 }
-
-
-exports.findLatest = findLatest;
-exports.linkLatest = linkLatest;

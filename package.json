@@ -1,31 +1,32 @@
 {
   "name": "s3pm",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "publish to (and link from) S3 as a jank node module storage",
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/robey/node-s3pm.git"
   },
-  "licenses": [
-    {
-      "type": "Apache License 2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
-    }
-  ],
+  "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf lib",
-    "prepublish": "6to5 --source-maps --out-dir lib src"
+    "build": "eslint src test/src && npm run build-source",
+    "build-source": "babel --source-maps --out-dir lib src",
+    "prepublish": "npm run build"
   },
   "dependencies": {
-    "antsy": "^1.1.1",
-    "bluebird": "*",
-    "clicolor": "*",
-    "s3": "*",
-    "source-map-support": "*"
+    "aws-sdk": "latest",
+    "bluebird": "latest",
+    "clicolor": "latest",
+    "minimist": "latest",
+    "s3": "latest",
+    "source-map-support": "latest"
   },
   "devDependencies": {
-    "6to5": "*"
+    "babel": "^6.0.0",
+    "babel-cli": "^6.0.0",
+    "babel-preset-es2015-node4": "^1.0.0",
+    "eslint": "^1.4.1"
   },
   "files": [
     "bin",

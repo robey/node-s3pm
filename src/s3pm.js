@@ -1,20 +1,36 @@
-#!/usr/bin/env node
 "use strict";
 
-const clicolor = require("clicolor");
-const fs = require("fs");
-const link = require("./link");
-const path = require("path");
-const Promise = require("bluebird");
-const publish = require("./publish");
-const s3 = require("s3");
-const util = require("util");
+import AWS from "aws-sdk";
+import clicolor from "clicolor";
+import fs from "fs";
+import minimist from "minimist";
+import path from "path";
+import publish from "./publish";
+import s3 from "s3";
+import { findLatest, linkLatest } from "./link";
 
-require("source-map-support").install();
+import "source-map-support/register";
 
-let USAGE = `
-usage: s3pm <command>
+const DEFAULTS = {
+  region: "us-west-2",
+  profile: "default"
+};
+
+const PACKAGE = require("../package.json");
+
+const USAGE = `
+usage: s3pm [options] <command>
     use Amazon S3 as a jank package store
+
+options:
+    --help
+    -r, --region <region>
+        select AWS region (default: ${DEFAULTS.region})
+    -p, --profile <profile>
+        select AWS credentials profile name (default: ${DEFAULTS.profile}, or
+        guessed from the service environment)
+    --no-color
+        turn off cool console colors
 
 command must be one of:
 
@@ -28,75 +44,80 @@ command must be one of:
         display the S3 URL for the latest release of a package
 `;
 
-const cli = clicolor.cli();
+const cli = clicolor();
 
-function main() {
-  let argv = process.argv.slice(2);
-  if (argv.length < 1 || argv[0] == "--help") {
-    console.log(USAGE);
-    process.exit(1);
+export function main() {
+  const argv = minimist(process.argv.slice(2), {
+    alias: { p: "profile", r: "region" },
+    boolean: [ "color", "current", "dev", "help", "version" ],
+    default: { color: "default", region: DEFAULTS.region, profile: DEFAULTS.profile }
+  });
+
+  if (argv.version) {
+    process.stdout.write(`s3pm ${PACKAGE.version}\n`);
+    process.exit(0);
   }
-  let credentials = getAwsCredentials();
+  if (argv.help || argv._.length == 0) {
+    process.stdout.write(USAGE + "\n");
+    process.exit(0);
+  }
+  if (argv.color != "default") cli.useColor(argv.color);
   if (!process.env.S3PM_BUCKET) {
     cli.displayError("Need S3PM_BUCKET environment variable.");
     process.exit(1);
   }
 
-  let client = s3.createClient({ s3Options: credentials });
+  setAwsCredentials(argv.profile);
+  const client = s3.createClient();
 
-  let command = argv[0];
+  const command = argv._[0];
   if (command == "publish") {
-    let bumpVersion = (argv[1] != "--current");
-    publish.publish(cli, client, bumpVersion);
+    publish(cli, client, { bumpVersion: !argv.current });
   } else if (command == "link") {
-    let devMode = false;
-    let name = argv[1];
-    if (name == "--dev") {
-      devMode = true;
-      name = argv[2];
-    }
+    const devMode = argv.dev;
+
+    const name = argv._[1];
     if (!name) {
       cli.displayError("Package name is required.");
       process.exit(1);
     }
 
-    link.linkLatest(cli, client, name, devMode);
+    linkLatest(cli, client, name, devMode);
   } else if (command == "find") {
-    let name = argv[1];
+    const name = argv._[1];
     if (!name) {
       cli.displayError("Package name is required.");
       process.exit(1);
     }
 
-    link.findLatest(cli, client, name).then(([ tarballName, url ]) => console.log(url));
+    findLatest(cli, client, name).then(({ url }) => console.log(url));
   } else {
-    cli.displayError("Unknown command: " + argv.join(" "));
+    cli.displayError("Unknown command: " + argv._.join(" "));
     console.log(USAGE);
     process.exit(1);
   }
-};
+}
 
-function getAwsCredentials() {
+function setAwsCredentials(profile) {
   const home = process.env.HOME || process.env.USERPROFILE;
-  if (fs.existsSync(path.join(home, ".aws_secret_key")) && fs.existsSync(path.join(home, ".aws_access_key"))) {
-    const accessKey = fs.readFileSync(path.join(home, ".aws_access_key")).toString().trim();
-    const secretKey = fs.readFileSync(path.join(home, ".aws_secret_key")).toString().trim();
-    return {
-      accessKeyId: accessKey,
-      secretAccessKey: secretKey
-    };
-  }
+  const awsFolder = process.env.AWS_DIR || path.join(home, ".aws");
 
-  if (process.env.AWS_ACCESS_KEY && process.env.AWS_SECRET_KEY) {
-    return {
-      accessKeyId: process.env.AWS_ACCESS_KEY,
-      secretAccessKey: process.env.AWS_SECRET_KEY
-    };
+  const awsFiles = [ "credentials", "config" ];
+  for (let i = 0; i < awsFiles.length; i++) {
+    const filename = path.join(awsFolder, awsFiles[i]);
+    if (fs.existsSync(filename)) {
+      try {
+        const config = new AWS.SharedIniFileCredentials({ filename, profile });
+        if (config.accessKeyId && config.secretAccessKey) {
+          AWS.config.credentials = config;
+          return;
+        }
+      } catch (error) {
+        // move on.
+      }
+    }
   }
 
   cli.displayError("AWS not configured (run 'aws configure')");
   process.exit(1);
 }
-
-
-exports.main = main;
